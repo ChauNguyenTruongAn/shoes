@@ -1,5 +1,9 @@
 using Microsoft.EntityFrameworkCore;
+using System.Reflection;
+using ShoesShop.API.Features.Categories;
 using ShoesShop.API.Infrastructure.Database;
+using Microsoft.Extensions.DependencyInjection;
+using ShoesShop.API.Features.Brands;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -10,11 +14,14 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(connectionString));
 
+builder.Services.AddScoped<ICategoryService, CategoryService>();
+builder.Services.AddScoped<IBrandService, BrandService>();
+
 // Thêm Controllers, Swagger, v.v...
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
-
+builder.Services.AddAutoMapper(typeof(Program));
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
