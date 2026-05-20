@@ -21,6 +21,9 @@ namespace ShoesShop.API.Infrastructure.Database.Entities
         [Column(TypeName = "decimal(18,2)")]
         public decimal BasePrice { get; set; }
 
+        public Category Category { get; set; }
+        public Brand Brand { get; set; }
+
         // Navigation properties
         public ICollection<ProductVariant> Variants { get; set; }
     }

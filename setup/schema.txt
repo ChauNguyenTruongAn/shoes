@@ -1,0 +1,159 @@
+// =========================================
+// 1. NGƯỜI DÙNG & TÀI KHOẢN (USERS)
+// =========================================
+Table Users {
+  id int [pk, increment]
+  email varchar [unique, not null]
+  password_hash varchar
+  full_name varchar
+  phone varchar
+  role varchar [default: 'customer'] // 'admin', 'customer'
+  status varchar [default: 'active'] // 'active', 'locked'
+  created_at timestamp
+}
+
+Table Addresses {
+  id int [pk, increment]
+  user_id int [ref: > Users.id]
+  receiver_name varchar
+  phone varchar
+  address_line varchar // Số nhà, tên đường
+  ward varchar
+  district varchar
+  city varchar
+  is_default boolean [default: false]
+}
+
+// =========================================
+// 2. DANH MỤC SẢN PHẨM (CATALOG)
+// =========================================
+Table Categories {
+  id int [pk, increment]
+  name varchar // VD: Giày chạy bộ, Giày Sneaker
+  slug varchar [unique]
+  parent_id int [ref: > Categories.id] // Cho phép danh mục cha - con
+}
+
+Table Brands {
+  id int [pk, increment]
+  name varchar // VD: Nike, Adidas, Puma
+  logo_url varchar
+}
+
+// Bảng Sản phẩm gốc (Thông tin chung)
+Table Products {
+  id int [pk, increment]
+  category_id int [ref: > Categories.id]
+  brand_id int [ref: > Brands.id]
+  name varchar
+  slug varchar [unique]
+  description text
+  base_price decimal // Giá gốc hiển thị chung
+  created_at timestamp
+  updated_at timestamp
+}
+
+// Hình ảnh chung của sản phẩm
+Table Product_Images {
+  id int [pk, increment]
+  product_id int [ref: > Products.id]
+  image_url varchar
+  is_thumbnail boolean [default: false]
+}
+
+// =========================================
+// 3. QUẢN LÝ BIẾN THỂ - QUAN TRỌNG NHẤT (VARIANTS)
+// =========================================
+// Mỗi tổ hợp (Màu + Size) là 1 biến thể riêng biệt để quản lý tồn kho chính xác
+Table Product_Variants {
+  id int [pk, increment]
+  product_id int [ref: > Products.id]
+  sku varchar [unique, not null] 
+  color varchar 
+  size varchar 
+  
+  // Cập nhật để hỗ trợ Giá gạch ngang
+  price decimal // Giá bán gốc (Sẽ bị gạch ngang trên UI nếu có promotional_price)
+  promotional_price decimal [null] // Giá Sale trực tiếp. Chỉ tồn tại khi đang có Flash Sale
+  
+  stock_quantity int [default: 0] 
+  variant_image_url varchar 
+}
+
+// =========================================
+// 4. GIỎ HÀNG (CART)
+// =========================================
+Table Cart_Items {
+  id int [pk, increment]
+  user_id int [ref: > Users.id]
+  product_variant_id int [ref: > Product_Variants.id] // Liên kết tới biến thể cụ thể
+  quantity int
+  created_at timestamp
+}
+
+// =========================================
+// 5. ĐƠN HÀNG & THANH TOÁN (ORDERS)
+Table Orders {
+  id int [pk, increment]
+  user_id int [ref: > Users.id]
+  total_amount decimal // Tổng tiền CẦN THANH TOÁN (Đã cộng ship, trừ voucher)
+  shipping_fee decimal
+  
+  // Lưu lại thông tin khuyến mãi để đối soát
+  promotion_id int [ref: > Promotions.id, null] // Cho phép null vì không phải đơn nào cũng có mã
+  discount_amount decimal [default: 0] // Số tiền được giảm thực tế nhờ Voucher
+  
+  status varchar 
+  payment_method varchar 
+  payment_status varchar 
+  shipping_address_id int [ref: > Addresses.id]
+  created_at timestamp
+}
+
+Table Order_Items {
+  id int [pk, increment]
+  order_id int [ref: > Orders.id]
+  product_variant_id int [ref: > Product_Variants.id] // Giữ lại ID biến thể khách đã mua
+  quantity int
+  unit_price decimal // Lưu lại giá tại thời điểm mua (tránh việc đổi giá sau này làm sai lịch sử)
+}
+
+// =========================================
+// 6. TƯƠNG TÁC (REVIEWS)
+// =========================================
+Table Reviews {
+  id int [pk, increment]
+  user_id int [ref: > Users.id]
+  product_id int [ref: > Products.id] // Đánh giá theo sản phẩm chung
+  rating int // 1 tới 5
+  comment text
+  created_at timestamp
+} 
+
+Table Promotions {
+  id int [pk, increment]
+  code varchar [unique, not null] // Mã nhập lúc checkout. VD: "SNEAKER20", "FREESHIP"
+  name varchar // Tên chương trình. VD: "Siêu sale mùa hè"
+  
+  // Loại giảm giá: 'percentage' (giảm %), 'fixed_amount' (trừ tiền thẳng), 'free_shipping' (miễn phí ship)
+  discount_type varchar 
+  discount_value decimal // Giá trị giảm (VD: 20 hoặc 50000)
+  
+  // Cột cực kỳ quan trọng cho logic kinh doanh:
+  max_discount_amount decimal // Mức giảm tối đa (Dành cho loại 'percentage', VD: Giảm 20% nhưng TỐI ĐA 100k)
+  min_order_value decimal // Giá trị đơn hàng tối thiểu để được áp dụng mã (VD: Đơn từ 500k)
+  
+  start_date timestamp
+  end_date timestamp
+  usage_limit int // Tổng số lượt sử dụng tối đa của mã này (VD: Chỉ cấp 100 mã)
+  used_count int [default: 0] // Số lượt thực tế đã có khách sử dụng thành công
+  is_active boolean [default: true]
+}
+
+// Bảng trung gian nếu muốn thiết kế Voucher chỉ áp dụng cho người dùng cụ thể (Tùy chọn nâng cao)
+Table User_Promotions {
+  id int [pk, increment]
+  user_id int [ref: > Users.id]
+  promotion_id int [ref: > Promotions.id]
+  is_used boolean [default: false] // Đánh dấu user này đã xài mã này chưa (tránh 1 user xài 1 mã nhiều lần)
+}

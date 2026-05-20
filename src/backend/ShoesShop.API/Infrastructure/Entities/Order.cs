@@ -10,6 +10,8 @@ namespace ShoesShop.API.Infrastructure.Database.Entities
         public int UserId { get; set; }
         public User User { get; set; }
 
+        public string Notes { get; set; }
+
         [Column(TypeName = "decimal(18,2)")]
         public decimal TotalAmount { get; set; } // Tổng tiền CẦN THANH TOÁN (Đã cộng ship, trừ voucher) [cite: 5]
 
